@@ -35,29 +35,29 @@ pipeline {
             }
         }
 
-        stage('Deploy to EC2') {
-            steps {
-                script {
-                    echo "🚀 Deploying API Gateway to EC2 (${EC2_HOST})..."
+       stage('Deploy to EC2') {
+    steps {
+        script {
+            echo "🚀 Deploying API Gateway to EC2 (${EC2_HOST})..."
 
-                    // ✅ Copy JAR to EC2
-                    bat """
-                        echo 📦 Copying JAR to EC2...
-                        net use \\\\${EC2_HOST}\\C$ /user:${EC2_USER} ${EC2_PASS}
-                        if not exist \\\\${EC2_HOST}\\C$\\Apps\\api-gateway mkdir \\\\${EC2_HOST}\\C$\\Apps\\api-gateway
-                        copy target\\api-gateway.jar \\\\${EC2_HOST}\\C$\\Apps\\api-gateway\\ /Y
-                        net use \\\\${EC2_HOST}\\C$ /delete
-                    """
+            // ✅ Copy JAR to EC2
+            bat """
+                echo 📦 Copying JAR to EC2...
+                net use \\\\\\\${EC2_HOST}\\C\$ /user:${EC2_USER} ${EC2_PASS}
+                if not exist \\\\\\\${EC2_HOST}\\C\$\\Apps\\api-gateway mkdir \\\\\\\${EC2_HOST}\\C\$\\Apps\\api-gateway
+                copy target\\api-gateway.jar \\\\\\\${EC2_HOST}\\C\$\\Apps\\api-gateway\\ /Y
+                net use \\\\\\\${EC2_HOST}\\C\$ /delete
+            """
 
-                    // ✅ Stop old Java process and start new one remotely
-                    bat """
-                        echo 🔁 Restarting API Gateway service on EC2...
-                        "C:\\Tools\\PsExec.exe" \\\\${EC2_HOST} -u ${EC2_USER} -p ${EC2_PASS} -h -d cmd /c ^
-                        "taskkill /F /IM java.exe & cd ${DEPLOY_DIR} & start java -jar api-gateway.jar --server.port=${SERVICE_PORT}"
-                    """
-                }
-            }
+            // ✅ Stop old Java process and start new one remotely
+            bat """
+                echo 🔁 Restarting API Gateway on EC2...
+                "C:\\Tools\\PsExec.exe" \\\\\\\${EC2_HOST} -u ${EC2_USER} -p ${EC2_PASS} -h -d cmd /c ^
+                "taskkill /F /IM java.exe & cd ${DEPLOY_DIR} & start java -jar api-gateway.jar --server.port=${SERVICE_PORT}"
+            """
         }
+    }
+}
     }
 
     post {
