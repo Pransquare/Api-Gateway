@@ -10,7 +10,7 @@ pipeline {
         DEPLOY_DIR = "C:\\Apps\\api-gateway"
         SERVICE_NAME = "api-gateway"
         SERVICE_PORT = "8765"
-        S3_BUCKET = "api-gateway-deployment-2025"
+        S3_BUCKET = "eureka-deployment-2025"
         REGION = "eu-north-1"
     }
 
