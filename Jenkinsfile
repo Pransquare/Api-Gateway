@@ -7,15 +7,14 @@ pipeline {
     }
 
     environment {
-        EC2_HOST = "13.53.193.215"           // ✅ Replace with your EC2 public IP
-        EC2_USER = "Administrator"          // ✅ Windows EC2 username
-        EC2_PASS = "d8%55Ir.%Z!hNR%VgUe-07OYX0ujLy;S"     // ✅ Administrator password
         DEPLOY_DIR = "C:\\Apps\\api-gateway"
+        SERVICE_NAME = "api-gateway"
         SERVICE_PORT = "8765"
+        S3_BUCKET = "api-gateway-deployment-2025"
+        REGION = "eu-north-1"
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 echo "🔹 Checking out API Gateway repository..."
@@ -35,29 +34,51 @@ pipeline {
             }
         }
 
-       stage('Deploy to EC2') {
-    steps {
-        script {
-            echo "🚀 Deploying API Gateway to EC2 (${EC2_HOST})..."
-
-            // ✅ Copy JAR to EC2
-            bat """
-                echo 📦 Copying JAR to EC2...
-                net use \\\\\\\${EC2_HOST}\\C\$ /user:${EC2_USER} ${EC2_PASS}
-                if not exist \\\\\\\${EC2_HOST}\\C\$\\Apps\\api-gateway mkdir \\\\\\\${EC2_HOST}\\C\$\\Apps\\api-gateway
-                copy target\\api-gateway.jar \\\\\\\${EC2_HOST}\\C\$\\Apps\\api-gateway\\ /Y
-                net use \\\\\\\${EC2_HOST}\\C\$ /delete
-            """
-
-            // ✅ Stop old Java process and start new one remotely
-            bat """
-                echo 🔁 Restarting API Gateway on EC2...
-                "C:\\Tools\\PsExec.exe" \\\\\\\${EC2_HOST} -u ${EC2_USER} -p ${EC2_PASS} -h -d cmd /c ^
-                "taskkill /F /IM java.exe & cd ${DEPLOY_DIR} & start java -jar api-gateway.jar --server.port=${SERVICE_PORT}"
-            """
+        stage('Upload JAR to S3') {
+            steps {
+                withAWS(credentials: 'aws-jenkins-creds', region: "${REGION}") {
+                    echo "📦 Uploading JAR to S3..."
+                    s3Upload(bucket: "${S3_BUCKET}", path: "${SERVICE_NAME}.jar", file: "target\\${SERVICE_NAME}.jar")
+                }
+            }
         }
-    }
-}
+
+        stage('Deploy to EC2 via WinRM') {
+            steps {
+                powershell """
+                    # Hardcoded credentials (temporary for testing)
+                    \$username = 'Administrator'
+                    \$password = 'd8%55Ir.%Z!hNR%VgUe-07OYX0ujLy;S'
+                    \$secPassword = ConvertTo-SecureString \$password -AsPlainText -Force
+                    \$cred = New-Object System.Management.Automation.PSCredential(\$username, \$secPassword)
+
+                    # Session options to skip certificate checks
+                    \$sessOption = New-PSSessionOption -SkipCACheck -SkipCNCheck -SkipRevocationCheck
+
+                    # Create WinRM session using HTTPS
+                    \$session = New-PSSession -ComputerName '13.53.193.215' -UseSSL -Credential \$cred -Authentication Basic -SessionOption \$sessOption
+
+                    # Commands to deploy JAR
+                    Invoke-Command -Session \$session -ScriptBlock {
+                        if (-Not (Test-Path '${DEPLOY_DIR}')) {
+                            New-Item -ItemType Directory -Path '${DEPLOY_DIR}'
+                        }
+
+                        # Download JAR from S3
+                        aws s3 cp s3://${S3_BUCKET}/${SERVICE_NAME}.jar ${DEPLOY_DIR}\\${SERVICE_NAME}.jar
+
+                        # Stop existing Java process
+                        Get-Process -Name java -ErrorAction SilentlyContinue | Stop-Process -Force
+
+                        # Start the new JAR
+                        Start-Process -FilePath 'java' -ArgumentList "-jar ${DEPLOY_DIR}\\${SERVICE_NAME}.jar --server.port=${SERVICE_PORT}" -WindowStyle Hidden
+                    }
+
+                    # Close session
+                    Remove-PSSession \$session
+                """
+            }
+        }
     }
 
     post {
