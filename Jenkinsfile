@@ -34,8 +34,7 @@ pipeline {
                     // ✅ Define variables inside this script block
                     def EC2_USER = "Administrator"
                     def EC2_HOST = "51.20.72.212"   // Replace with your EC2 public IP
-                    def PEM_PATH = C:\Users\Ajay Kumar\Downloads\jenkin-key.pem
-
+                    def PEM_PATH = def PEM_PATH = "C:\\Users\\Ajay Kumar\\Downloads\\jenkin-key.pem"
                     def EC2_DEPLOY_DIR = "C:\\Apps\\api-gateway"
 
                     echo "Deploying API Gateway to EC2 at ${EC2_HOST}..."
