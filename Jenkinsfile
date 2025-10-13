@@ -28,38 +28,37 @@ pipeline {
             }
         }
 
-       stage('Deploy') {
-    steps {
-        echo "Deploying API Gateway to EC2..."
+        stage('Deploy to EC2') {
+            steps {
+                script {
+                    // ✅ Define variables inside this script block
+                    def EC2_USER = "Administrator"
+                    def EC2_HOST = "13.61.190.82"   // Replace with your EC2 public IP
+                    def PEM_PATH = "C:\\Users\\swapn\\Downloads\\s-key.pem"
+                    def EC2_DEPLOY_DIR = "C:\\Apps\\api-gateway"
 
-        // Define variables
-        script {
-            def EC2_USER = "Administrator"
-            def EC2_HOST = "13.61.190.82" // your EC2 public IP
-            def PEM_PATH = "C:\\Users\\swapn\\Downloads\\s-key.pem"
-            def EC2_DEPLOY_DIR = "C:\\Apps\\api-gateway"
+                    echo "Deploying API Gateway to EC2 at ${EC2_HOST}..."
+
+                    // ✅ Stop any existing Java process remotely (optional)
+                    bat """
+                    echo Stopping existing API Gateway on EC2...
+                    ssh -i "${PEM_PATH}" ${EC2_USER}@${EC2_HOST} "taskkill /F /IM java.exe || exit 0"
+                    """
+
+                    // ✅ Copy new JAR file to EC2
+                    bat """
+                    echo Copying JAR to EC2...
+                    scp -i "${PEM_PATH}" target\\api-gateway-0.0.1-SNAPSHOT.jar ${EC2_USER}@${EC2_HOST}:/C:/Apps/api-gateway/
+                    """
+
+                    // ✅ Start new API Gateway process on EC2
+                    bat """
+                    echo Starting API Gateway on EC2...
+                    ssh -i "${PEM_PATH}" ${EC2_USER}@${EC2_HOST} "cd C:\\Apps\\api-gateway && start cmd /c java -jar api-gateway-0.0.1-SNAPSHOT.jar --server.port=8765"
+                    """
+                }
+            }
         }
-
-        // Stop any existing process remotely
-        bat """
-        echo Stopping existing API Gateway on EC2...
-        pscp -i "%PEM_PATH%" stop-app.bat ${EC2_USER}@${EC2_HOST}:${EC2_DEPLOY_DIR}\\
-        """
-
-        // Copy new JAR file to EC2
-        bat """
-        echo Copying new JAR to EC2...
-        scp -i "%PEM_PATH%" target\\api-gateway-0.0.1-SNAPSHOT.jar ${EC2_USER}@${EC2_HOST}:/C:/Apps/api-gateway/
-        """
-
-        // Start the new process
-        bat """
-        echo Starting API Gateway on EC2...
-        ssh -i "%PEM_PATH%" ${EC2_USER}@${EC2_HOST} "cd C:\\Apps\\api-gateway && start cmd /c java -jar api-gateway-0.0.1-SNAPSHOT.jar --server.port=8765"
-        """
-    }
-}
-
     }
 
     post {
