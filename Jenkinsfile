@@ -3,11 +3,11 @@ pipeline {
 
     environment {
         DEPLOY_DIR = "/home/ec2-user"
-        EC2_HOST = "13.60.47.188"
         SERVICE_NAME = "api-gateway"
         SERVER_PORT = "8085"
         LOG_FILE = "api-gateway.log"
-        SSH_CREDENTIALS_ID = "ec2-linux-key" // Create SSH credentials in Jenkins
+        SSH_CREDENTIALS_ID = "ec2-linux-key"
+        KNOWN_HOSTS_PATH = "C:\\ProgramData\\Jenkins\\.ssh\\known_hosts"
     }
 
     tools {
@@ -16,7 +16,6 @@ pipeline {
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 git url: 'https://github.com/Pransquare/Api-Gateway.git', branch: 'master'
@@ -32,26 +31,36 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 script {
-                    // Define the remote server
-                    def remote = [:]
-                    remote.name = 'ec2-server'
-                    remote.host = env.EC2_HOST
-                    remote.user = 'ec2-user'
-                    remote.identityFile = 'C:\\ProgramData\\Jenkins\\.ssh\\krishna.pem'
+                    sshPut remote: [
+                        host: '13.60.47.188',
+                        user: 'ec2-user',
+                        credentialsId: SSH_CREDENTIALS_ID,
+                        knownHosts: readTrusted(KNOWN_HOSTS_PATH)
+                    ],
+                    from: "target\\${SERVICE_NAME}.jar",
+                    into: "${DEPLOY_DIR}/"
 
-                    // Upload JAR
-                    sshPut remote: remote, from: "target\\${SERVICE_NAME}.jar", into: "${DEPLOY_DIR}/"
-
-                    // Stop old instance and start new one safely
-                    sshCommand remote: remote, command: """
-                        echo "===== Stopping old API Gateway instance if running ====="
-                        pgrep -f ${SERVICE_NAME}.jar && pkill -f ${SERVICE_NAME}.jar || echo "No running instance found"
-                        
-                        echo "===== Starting new API Gateway instance ====="
-                        nohup java -jar ${DEPLOY_DIR}/${SERVICE_NAME}.jar --server.port=${SERVER_PORT} > ${DEPLOY_DIR}/${LOG_FILE} 2>&1 &
-                        
-                        echo "✅ Deployment completed successfully!"
+                    sshCommand remote: [
+                        host: '13.60.47.188',
+                        user: 'ec2-user',
+                        credentialsId: SSH_CREDENTIALS_ID,
+                        knownHosts: readTrusted(KNOWN_HOSTS_PATH)
+                    ],
+                    command: """
+                        if pgrep -f ${SERVICE_NAME}.jar > /dev/null; then
+                            pkill -f ${SERVICE_NAME}.jar
+                        else
+                            echo "No running instance of ${SERVICE_NAME}.jar found."
+                        fi
                     """
+
+                    sshCommand remote: [
+                        host: '13.60.47.188',
+                        user: 'ec2-user',
+                        credentialsId: SSH_CREDENTIALS_ID,
+                        knownHosts: readTrusted(KNOWN_HOSTS_PATH)
+                    ],
+                    command: "nohup java -jar ${DEPLOY_DIR}/${SERVICE_NAME}.jar --server.port=${SERVER_PORT} > ${DEPLOY_DIR}/${LOG_FILE} 2>&1 &"
                 }
             }
         }
