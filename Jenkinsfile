@@ -1,70 +1,57 @@
 pipeline {
     agent any
+
+    environment {
+        DEPLOY_DIR = "/home/ec2-user"
+        EC2_HOST = "13.60.47.188"
+        SERVICE_NAME = "api-gateway"
+        PEM_PATH = "C:\\ProgramData\\Jenkins\\.ssh\\krishna.pem"
+        SERVER_PORT = "8085"
+        LOG_FILE = "api-gateway.log"
+    }
+
     tools {
         jdk 'Java17'
         maven 'Maven3'
     }
-    environment {
-        DEPLOY_DIR = "C:\\Deployments"
-        SERVICE_NAME = "api-gateway"
-        SERVICE_PORT = "8085"
-        S3_BUCKET = "eureka-deployment-2025"
-        REGION = "eu-north-1"
-    }
+
     stages {
+
         stage('Checkout') {
             steps {
-                git branch: 'master', url: 'https://github.com/Pransquare/Api-Gateway.git'
+                git url: 'https://github.com/Pransquare/Api-Gateway.git', branch: 'master'
             }
         }
+
         stage('Build') {
             steps {
                 bat 'mvn clean package -DskipTests'
             }
         }
-        stage('Upload JAR to S3') {
+
+        stage('Deploy to EC2') {
             steps {
-                withAWS(credentials: 'aws-jenkins-creds', region: "${REGION}") {
-                    s3Upload(bucket: "${S3_BUCKET}", path: "${SERVICE_NAME}.jar", file: "target\\${SERVICE_NAME}.jar")
+                withEnv(["PATH=${tool 'Git'}/bin:${env.PATH}"]) {
+                    bat """
+                    echo ===== Copying JAR to EC2 =====
+                    scp -i "${PEM_PATH}" -o StrictHostKeyChecking=no target\\${SERVICE_NAME}.jar ec2-user@${EC2_HOST}:${DEPLOY_DIR}/
+
+                    echo ===== Stopping old API Gateway instance if running =====
+                    ssh -i "${PEM_PATH}" -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "pkill -f ${SERVICE_NAME}.jar || true"
+
+                    echo ===== Starting new API Gateway instance =====
+                    ssh -i "${PEM_PATH}" -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "nohup java -jar ${DEPLOY_DIR}/${SERVICE_NAME}.jar --server.port=${SERVER_PORT} > ${DEPLOY_DIR}/${LOG_FILE} 2>&1 &"
+
+                    echo ✅ Deployment completed successfully!
+                    """
                 }
             }
         }
-       stage('Deploy to EC2 via WinRM') {
-    steps {
-        powershell """
-        # Hardcoded credentials (temporary for testing)
-        \$username = 'Administrator'
-        \$password = 'd8%55Ir.%Z!hNR%VgUe-07OYX0ujLy;S'
-        \$secPassword = ConvertTo-SecureString \$password -AsPlainText -Force
-        \$cred = New-Object System.Management.Automation.PSCredential(\$username, \$secPassword)
-
-        # Session options to skip certificate checks
-        \$sessOption = New-PSSessionOption -SkipCACheck -SkipCNCheck -SkipRevocationCheck
-
-        # Create WinRM session using HTTPS
-        \$session = New-PSSession -ComputerName '13.53.193.215' -UseSSL -Credential \$cred -Authentication Basic -SessionOption \$sessOption
-
-        # Commands to deploy JAR
-        Invoke-Command -Session \$session -ScriptBlock {
-            if (-Not (Test-Path '${DEPLOY_DIR}')) { New-Item -ItemType Directory -Path '${DEPLOY_DIR}' }
-
-            # Download JAR from S3
-            aws s3 cp s3://${S3_BUCKET}/${SERVICE_NAME}.jar ${DEPLOY_DIR}\\${SERVICE_NAME}.jar
-
-            # Stop only the Java process running eureka-server.jar
-            Get-CimInstance Win32_Process -Filter "Name='java.exe'" |
-                Where-Object { \$_.CommandLine -like '*${SERVICE_NAME}.jar*' } |
-                ForEach-Object { Stop-Process -Id \$_.ProcessId -Force }
-
-            # Start the new JAR
-            Start-Process -FilePath 'java' -ArgumentList "-jar ${DEPLOY_DIR}\\${SERVICE_NAME}.jar" -WindowStyle Hidden
-        }
-
-        # Close session
-        Remove-PSSession \$session
-        """
     }
-}
 
+    post {
+        failure {
+            echo "❌ Deployment failed. Check Jenkins console logs for details."
+        }
     }
 }
