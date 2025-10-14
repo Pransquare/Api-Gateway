@@ -46,7 +46,13 @@ pipeline {
 
                     // Stop old instance if running
                     echo "===== Stopping old API Gateway instance if running ====="
-                    sshCommand remote: remote, command: "pkill -f ${SERVICE_NAME}.jar || true"
+                    sshCommand remote: remote, command: """
+                        if pgrep -f ${SERVICE_NAME}.jar > /dev/null; then
+                            pkill -f ${SERVICE_NAME}.jar
+                        else
+                            echo "No running instance of ${SERVICE_NAME}.jar found."
+                        fi
+                    """, ignoreExitStatus: true
 
                     // Start new instance
                     echo "===== Starting new API Gateway instance ====="
