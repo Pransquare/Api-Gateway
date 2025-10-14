@@ -30,41 +30,38 @@ pipeline {
         }
 
         stage('Deploy to EC2') {
-            steps {
-                script {
-                    // Define remote SSH connection
-                    def remote = [:]
-                    remote.name = 'ec2-server'
-                    remote.host = "${EC2_HOST}"
-                    remote.user = 'ec2-user'
-                    remote.identityFile = "${PEM_PATH}"
-                    remote.allowAnyHosts = true
+    steps {
+        script {
+            def remote = [:]
+            remote.name = 'ec2-server'
+            remote.host = "${EC2_HOST}"
+            remote.user = 'ec2-user'
+            remote.identityFile = "${PEM_PATH}"
+            remote.allowAnyHosts = true
 
-                    // Copy JAR to EC2
-                    echo "===== Copying JAR to EC2 ====="
-                    sshPut remote: remote, from: "target/${SERVICE_NAME}.jar", into: "${DEPLOY_DIR}/"
+            echo "===== Copying JAR to EC2 ====="
+            sshPut remote: remote, from: "target/${SERVICE_NAME}.jar", into: "${DEPLOY_DIR}/"
 
-                    // Stop old instance if running
-                    echo "===== Stopping old API Gateway instance if running ====="
-                    sshCommand remote: remote, command: """
-                        if pgrep -f ${SERVICE_NAME}.jar > /dev/null; then
-                            pkill -f ${SERVICE_NAME}.jar
-                        else
-                            echo "No running instance of ${SERVICE_NAME}.jar found."
-                        fi
-                    """, ignoreExitStatus: true
+            echo "===== Stopping old API Gateway instance if running ====="
+            sshCommand remote: remote, command: '''
+                if pgrep -f api-gateway.jar > /dev/null; then
+                    pkill -f api-gateway.jar
+                else
+                    echo "No running instance of api-gateway.jar found."
+                fi
+            ''', ignoreExitStatus: true
 
-                    // Start new instance
-                    echo "===== Starting new API Gateway instance ====="
-                    sshCommand remote: remote, command: """
-                        nohup java -jar ${DEPLOY_DIR}/${SERVICE_NAME}.jar \
-                        --server.port=${SERVER_PORT} > ${DEPLOY_DIR}/${LOG_FILE} 2>&1 &
-                    """
+            echo "===== Starting new API Gateway instance ====="
+            sshCommand remote: remote, command: """
+                nohup java -jar ${DEPLOY_DIR}/${SERVICE_NAME}.jar \
+                --server.port=${SERVER_PORT} > ${DEPLOY_DIR}/${LOG_FILE} 2>&1 &
+            """
 
-                    echo "✅ Deployment completed successfully!"
-                }
-            }
+            echo "✅ Deployment completed successfully!"
         }
+    }
+}
+
     }
 
     post {
