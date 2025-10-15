@@ -1,80 +1,76 @@
 pipeline {
     agent any
 
-    environment {
-        DEPLOY_DIR = "/home/ec2-user"
-        EC2_HOST = "13.51.195.68"
-        SERVICE_NAME = "api-gateway"
-        SERVER_PORT = "8085"
-        LOG_FILE = "api-gateway.log"
-        SSH_CREDENTIALS_ID = "ec2-ssh-key"
-    }
-
     tools {
         jdk 'Java17'
         maven 'Maven3'
+        git 'Git'
+    }
+
+    environment {
+        EC2_USER = "ec2-user"
+        EC2_HOST = "13.51.195.68"
+        EC2_DIR  = "/home/ec2-user/api-gateway"
+        SSH_KEY  = credentials('ec2-ssh-key') // your Jenkins SSH key ID
+        JAR_NAME = "api-gateway.jar"
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 git branch: 'master', url: 'https://github.com/Pransquare/Api-Gateway.git'
             }
         }
 
-        stage('Build') {
+        stage('Build JAR') {
             steps {
-                script {
-                    def mvnCmd = 'mvn clean package -DskipTests'
-                    if (isUnix()) {
-                        sh mvnCmd
-                    } else {
-                        bat mvnCmd
-                    }
-                }
+                bat "mvn clean package -DskipTests"
             }
         }
 
-        stage('Deploy to EC2') {
+        stage('Test SSH Connection') {
             steps {
-                script {
-                    def remote = [
-                        name: "ec2-server",
-                        host: "${EC2_HOST}",
-                        user: "ec2-user",
-                        allowAnyHosts: true,
-                        credentialsId: "${SSH_CREDENTIALS_ID}"
-                    ]
+                bat "\"C:\\Program Files\\Git\\usr\\bin\\ssh.exe\" -i %SSH_KEY% -o StrictHostKeyChecking=no %EC2_USER%@%EC2_HOST% \"hostname; whoami\""
+            }
+        }
 
-                    echo "===== Copying JAR to EC2 ====="
-                    sshPut remote: remote, from: "target/${SERVICE_NAME}.jar", into: "${DEPLOY_DIR}/"
+        stage('Prepare EC2 Directory') {
+            steps {
+                bat "\"C:\\Program Files\\Git\\usr\\bin\\ssh.exe\" -i %SSH_KEY% -o StrictHostKeyChecking=no %EC2_USER%@%EC2_HOST% \"mkdir -p %EC2_DIR%\""
+            }
+        }
 
-                    echo "===== Stopping old instance (if running) ====="
-                    sshCommand remote: remote, command: "pkill -f ${SERVICE_NAME}.jar || true"
+        stage('Copy JAR to EC2') {
+            steps {
+                echo "Copying JAR to EC2..."
+                bat "\"C:\\Program Files\\Git\\usr\\bin\\scp.exe\" -i %SSH_KEY% target\\%JAR_NAME% %EC2_USER%@%EC2_HOST%:%EC2_DIR%/"
+            }
+        }
 
-                    echo "===== Starting new instance ====="
-                    sshCommand remote: remote, command: """
-                        nohup java -jar ${DEPLOY_DIR}/${SERVICE_NAME}.jar \
-                        --server.port=${SERVER_PORT} > ${DEPLOY_DIR}/${LOG_FILE} 2>&1 &
-                    """
+        stage('Deploy App') {
+            steps {
+                echo "Checking if app is already running..."
+                bat """
+                set CMD=^
+ssh -i %SSH_KEY% %EC2_USER%@%EC2_HOST% ^"pid=\\$(pgrep -f %JAR_NAME%); if [ -n \\"\\$pid\\" ]; then echo 'App running, stopping it...'; kill -9 \\"\\$pid\\"; else echo 'App not running'; fi; nohup java -jar %EC2_DIR%/%JAR_NAME% > /dev/null 2>&1 &\\" 
+                %CMD%
+                """
+            }
+        }
 
-                    echo "===== Checking running process ====="
-                    sshCommand remote: remote, command: "ps -ef | grep ${SERVICE_NAME}.jar"
-
-                    echo "===== Showing last 10 log lines ====="
-                    sshCommand remote: remote, command: "tail -n 10 ${DEPLOY_DIR}/${LOG_FILE}"
-                }
+        stage('Verify App') {
+            steps {
+                bat "\"C:\\Program Files\\Git\\usr\\bin\\ssh.exe\" -i %SSH_KEY% %EC2_USER%@%EC2_HOST% \"ps -ef | grep java | grep %JAR_NAME%\""
             }
         }
     }
 
     post {
         failure {
-            echo "Deployment failed. Check Jenkins console logs for details."
+            echo "Deployment failed ❌"
         }
         success {
-            echo "Deployment completed successfully! ${SERVICE_NAME} is running on port ${SERVER_PORT}"
+            echo "Deployment succeeded ✅"
         }
     }
 }
