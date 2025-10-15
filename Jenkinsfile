@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    tools {
+        jdk 'Java17'
+        maven 'Maven3'
+    }
+
     environment {
         SERVICE_NAME = "api-gateway"
         EC2_USER = "ec2-user"
@@ -12,7 +17,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'master', url: 'https://github.com/Pransquare/API-Gateway.git'
+                git branch: 'main', url: 'https://github.com/Pransquare/API-Gateway.git'
             }
         }
 
