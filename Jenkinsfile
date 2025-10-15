@@ -2,22 +2,17 @@ pipeline {
     agent any
 
     environment {
-        DEPLOY_DIR = "/home/ec2-user/api-gateway"
-        EC2_HOST = "13.51.195.68"
         SERVICE_NAME = "api-gateway"
-        PEM_PATH = "C:\\Users\\KRISHNA\\.ssh\\ec2-key.pem"
-    }
-
-    tools {
-        jdk 'Java17'
-        maven 'Maven3'
+        EC2_USER = "ec2-user"
+        EC2_HOST = "13.51.195.68"
+        REMOTE_DIR = "/home/ec2-user/api-gateway"
+        JAR_NAME = "api-gateway.jar"
     }
 
     stages {
-
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/Pransquare/Api-Gateway.git', branch: 'master'
+                git branch: 'master', url: 'https://github.com/Pransquare/API-Gateway.git'
             }
         }
 
@@ -27,42 +22,46 @@ pipeline {
             }
         }
 
-        stage('Prepare EC2 Directory') {
+        stage('Create Remote Directory') {
             steps {
-                bat """
-                echo ===== Create remote directory if not exists =====
-                ssh -i "${PEM_PATH}" -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "mkdir -p ${DEPLOY_DIR}"
-                """
+                withCredentials([file(credentialsId: 'ec2-pem', variable: 'EC2_KEY')]) {
+                    bat """
+                    ssh -i "%EC2_KEY%" -o StrictHostKeyChecking=no %EC2_USER%@%EC2_HOST% "mkdir -p %REMOTE_DIR%"
+                    """
+                }
             }
         }
 
         stage('Copy JAR to EC2') {
             steps {
-                bat """
-                echo ===== Copying JAR to EC2 =====
-                scp -i "${PEM_PATH}" -o StrictHostKeyChecking=no target\\${SERVICE_NAME}.jar ec2-user@${EC2_HOST}:${DEPLOY_DIR}/
-                """
+                withCredentials([file(credentialsId: 'ec2-pem', variable: 'EC2_KEY')]) {
+                    bat """
+                    scp -i "%EC2_KEY%" -o StrictHostKeyChecking=no target\\%JAR_NAME% %EC2_USER%@%EC2_HOST%:%REMOTE_DIR%/
+                    """
+                }
             }
         }
 
         stage('Deploy App') {
             steps {
-                bat """
-                echo ===== Stopping old app if running =====
-                ssh -i "${PEM_PATH}" -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "pkill -f ${SERVICE_NAME}.jar || true"
-
-                echo ===== Starting new app =====
-                ssh -i "${PEM_PATH}" -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "nohup java -jar ${DEPLOY_DIR}/${SERVICE_NAME}.jar > ${DEPLOY_DIR}/${SERVICE_NAME}.log 2>&1 &"
-
-                echo ✅ Deployment completed successfully!
-                """
+                withCredentials([file(credentialsId: 'ec2-pem', variable: 'EC2_KEY')]) {
+                    bat """
+                    ssh -i "%EC2_KEY%" -o StrictHostKeyChecking=no %EC2_USER%@%EC2_HOST% "
+                        pkill -f %JAR_NAME% || true
+                        nohup java -jar %REMOTE_DIR%/%JAR_NAME% > %REMOTE_DIR%/app.log 2>&1 &
+                    "
+                    """
+                }
             }
         }
     }
 
     post {
+        success {
+            echo "✅ Deployment successful!"
+        }
         failure {
-            echo "❌ Deployment failed. Check Jenkins console logs for details."
+            echo "❌ Deployment failed. Check console logs for details."
         }
     }
 }
