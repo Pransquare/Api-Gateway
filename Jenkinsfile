@@ -3,11 +3,11 @@ pipeline {
 
     environment {
         DEPLOY_DIR = "/home/ec2-user"
-        EC2_HOST = "51.21.200.23"
+        EC2_HOST = "13.51.195.68"
         SERVICE_NAME = "api-gateway"
         SERVER_PORT = "8085"
         LOG_FILE = "api-gateway.log"
-        SSH_CREDENTIALS_ID = "ec2-linux-key"  // Jenkins SSH credential
+        SSH_CREDENTIALS_ID = "ec2-linux-key"
     }
 
     tools {
@@ -25,20 +25,26 @@ pipeline {
 
         stage('Build') {
             steps {
-                bat 'mvn clean package -DskipTests'
+                script {
+                    def mvnCmd = 'mvn clean package -DskipTests'
+                    if (isUnix()) {
+                        sh mvnCmd
+                    } else {
+                        bat mvnCmd
+                    }
+                }
             }
         }
 
         stage('Deploy to EC2') {
             steps {
                 script {
-                    echo "===== Preparing EC2 remote configuration ====="
                     def remote = [
                         name: "ec2-server",
                         host: "${EC2_HOST}",
                         user: "ec2-user",
                         allowAnyHosts: true,
-                        credentialsId: "${SSH_CREDENTIALS_ID}"  // Jenkins SSH credential
+                        credentialsId: "${SSH_CREDENTIALS_ID}"
                     ]
 
                     echo "===== Copying JAR to EC2 ====="
@@ -65,10 +71,10 @@ pipeline {
 
     post {
         failure {
-            echo "Deployment failed. Check Jenkins console logs for details."
+            echo "❌ Deployment failed. Check Jenkins console logs for details."
         }
         success {
-            echo "Deployment completed successfully! ${SERVICE_NAME} is running on port ${SERVER_PORT}"
+            echo "✅ Deployment completed successfully! ${SERVICE_NAME} is running on port ${SERVER_PORT}"
         }
     }
 }
