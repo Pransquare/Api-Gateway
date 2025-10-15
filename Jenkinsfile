@@ -7,7 +7,7 @@ pipeline {
         SERVICE_NAME = "api-gateway"
         SERVER_PORT = "8085"
         LOG_FILE = "api-gateway.log"
-        SSH_CREDENTIALS_ID = "ec2-linux-key"
+        SSH_CREDENTIALS_ID = "ec2-ssh-key"
     }
 
     tools {
