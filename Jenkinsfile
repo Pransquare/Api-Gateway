@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         DEPLOY_DIR = "/home/ec2-user"
-        EC2_HOST = "13.60.47.188"
+        EC2_HOST = "51.21.200.23"
         SERVICE_NAME = "api-gateway"
         SERVER_PORT = "8085"
         LOG_FILE = "api-gateway.log"
