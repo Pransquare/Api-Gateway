@@ -49,11 +49,12 @@ pipeline {
 
         stage('Deploy App') {
             steps {
-                echo "Checking if app is already running..."
+                echo "Stopping previous app (if running) and starting new deployment..."
                 bat """
-                set CMD=^
-ssh -i %SSH_KEY% %EC2_USER%@%EC2_HOST% ^"pid=\\$(pgrep -f %JAR_NAME%); if [ -n \\"\\$pid\\" ]; then echo 'App running, stopping it...'; kill -9 \\"\\$pid\\"; else echo 'App not running'; fi; nohup java -jar %EC2_DIR%/%JAR_NAME% > /dev/null 2>&1 &\\" 
-                %CMD%
+                "C:\\Program Files\\Git\\usr\\bin\\ssh.exe" -i %SSH_KEY% -o StrictHostKeyChecking=no %EC2_USER%@%EC2_HOST% ^
+                "pid=\\\\\\$(pgrep -f %JAR_NAME%); ^
+                if [ -n \\"\\\\\\$pid\\" ]; then echo 'App running, stopping it...'; kill -9 \\"\\\\\\$pid\\"; else echo 'No previous app running'; fi; ^
+                echo 'Starting new app...'; nohup java -jar %EC2_DIR%/%JAR_NAME% > /dev/null 2>&1 &"
                 """
             }
         }
