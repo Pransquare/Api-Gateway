@@ -71,10 +71,10 @@ pipeline {
 
     post {
         failure {
-            echo "❌ Deployment failed. Check Jenkins console logs for details."
+            echo "Deployment failed. Check Jenkins console logs for details."
         }
         success {
-            echo "✅ Deployment completed successfully! ${SERVICE_NAME} is running on port ${SERVER_PORT}"
+            echo "Deployment completed successfully! ${SERVICE_NAME} is running on port ${SERVER_PORT}"
         }
     }
 }
