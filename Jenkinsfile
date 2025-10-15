@@ -11,7 +11,7 @@ pipeline {
         EC2_USER = "ec2-user"
         EC2_HOST = "13.51.195.68"
         EC2_DIR  = "/home/ec2-user/api-gateway"
-        SSH_KEY  = credentials('ec2-ssh-key') // your Jenkins SSH key ID
+        SSH_KEY  = credentials('ec2-ssh-key') // Jenkins SSH key ID
         JAR_NAME = "api-gateway.jar"
     }
 
@@ -50,7 +50,7 @@ pipeline {
         stage('Deploy App') {
             steps {
                 echo "Stopping previous app (if running) and starting new deployment..."
-                bat '"C:\\Program Files\\Git\\usr\\bin\\ssh.exe" -i %SSH_KEY% -o StrictHostKeyChecking=no %EC2_USER%@%EC2_HOST% "bash -c '\''pid=$(pgrep -f %JAR_NAME%); if [ -n \"$pid\" ]; then echo '\''App running, stopping it...'\''; kill -9 $pid; else echo '\''No previous app running'\''; fi; echo '\''Starting new app...'\''; nohup java -jar %EC2_DIR%/%JAR_NAME% > /dev/null 2>&1 &'\'' "'
+                bat '''"C:\\Program Files\\Git\\usr\\bin\\ssh.exe" -i %SSH_KEY% -o StrictHostKeyChecking=no %EC2_USER%@%EC2_HOST% "bash -c \\"pid=$(pgrep -f %JAR_NAME%); if [ -n \\"$pid\\" ]; then echo 'App running, stopping it...'; kill -9 $pid; else echo 'No previous app running'; fi; echo 'Starting new app...'; nohup java -jar %EC2_DIR%/%JAR_NAME% > /dev/null 2>&1 &\\""'''
             }
         }
 
