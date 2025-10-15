@@ -17,7 +17,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/Pransquare/API-Gateway.git'
+                git branch: 'master', url: 'https://github.com/Pransquare/Api-Gateway.git'
             }
         }
 
