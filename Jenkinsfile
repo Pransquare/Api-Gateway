@@ -11,6 +11,7 @@ pipeline {
     tools {
         jdk 'Java17'
         maven 'Maven3'
+        git 'Git'
     }
 
     stages {
@@ -27,29 +28,23 @@ pipeline {
             }
         }
 
-        stage('Deploy to EC2') {
-            steps {
-                withEnv(["PATH=${tool 'Git'}/bin:${env.PATH}"]) {
-                    bat """
-                    echo ===== Fixing PEM key permissions =====
-                    icacls "${PEM_PATH}" /inheritance:r
-                    icacls "${PEM_PATH}" /grant:r "%USERNAME%:R"
-                    icacls "${PEM_PATH}" /remove "Users" "BUILTIN\\Users" "Everyone"
+       stage('Deploy to EC2') {
+    steps {
+        sshagent(['ec2-key']) {
+            bat """
+            echo ===== Copying JAR to EC2 =====
+            scp -o StrictHostKeyChecking=no target\\${SERVICE_NAME}.jar ec2-user@${EC2_HOST}:${DEPLOY_DIR}/
 
-                    echo ===== Copying JAR to EC2 =====
-                    scp -i "${PEM_PATH}" -o StrictHostKeyChecking=no target\\${SERVICE_NAME}.jar ec2-user@${EC2_HOST}:${DEPLOY_DIR}/
+            echo ===== Stopping old instance =====
+            ssh -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "pkill -f ${SERVICE_NAME}.jar || true"
 
-                    echo ===== Stopping old API-Gateway instance if running =====
-                    ssh -i "${PEM_PATH}" -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "pkill -f ${SERVICE_NAME}.jar || true"
-
-                    echo ===== Starting new API-Gateway instance =====
-                    ssh -i "${PEM_PATH}" -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "nohup java -jar ${DEPLOY_DIR}/${SERVICE_NAME}.jar > ${DEPLOY_DIR}/${SERVICE_NAME}.log 2>&1 &"
-
-                    echo ✅ Deployment completed successfully!
-                    """
-                }
-            }
+            echo ===== Starting new instance =====
+            ssh -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "nohup java -jar ${DEPLOY_DIR}/${SERVICE_NAME}.jar > ${DEPLOY_DIR}/${SERVICE_NAME}.log 2>&1 &"
+            """
         }
+    }
+}
+
     }
 
     post {
