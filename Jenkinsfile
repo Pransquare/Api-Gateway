@@ -9,7 +9,7 @@ pipeline {
     environment {
         SERVICE_NAME = "api-gateway"
         EC2_USER = "ec2-user"
-        EC2_HOST = "13.51.195.68"
+        EC2_HOST = "13.53.39.170"
         REMOTE_DIR = "/home/ec2-user/api-gateway"
         JAR_NAME = "api-gateway.jar"
     }
