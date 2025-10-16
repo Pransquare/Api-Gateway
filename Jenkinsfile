@@ -2,12 +2,12 @@ pipeline {
     agent any
 
     environment {
-        DEPLOY_DIR = "/home/ec2-user/api-gateway"
+        DEPLOY_DIR = "/home/ec2-user"
         EC2_HOST = "13.53.39.170"
         SERVICE_NAME = "api-gateway"
         SERVER_PORT = "8085"
         LOG_FILE = "api-gateway.log"
-        SSH_CREDENTIALS_ID = "ec2-ssh-key"
+        SSH_CREDENTIALS_ID = "ec2-ssh-key" // Jenkins SSH credentials
     }
 
     tools {
@@ -36,38 +36,40 @@ pipeline {
             }
         }
 
-        stage('Deploy to EC2') {
+        stage('Prepare Deploy Script') {
             steps {
                 script {
-                    def remote = [
-                        name: "ec2-server",
-                        host: EC2_HOST,
-                        user: "ec2-user",
-                        allowAnyHosts: true,
-                        credentialsId: SSH_CREDENTIALS_ID
-                    ]
-
-                    echo "===== Creating deploy directory on EC2 if not exists ====="
-                    sshCommand remote: remote, command: "mkdir -p ${DEPLOY_DIR}"
-
-                    echo "===== Copying JAR to EC2 ====="
-                    sshPut remote: remote, from: "target/${SERVICE_NAME}.jar", into: "${DEPLOY_DIR}/"
-
-                    echo "===== Stopping old instance (if running) ====="
-                    sshCommand remote: remote, command: "pkill -f ${SERVICE_NAME}.jar || true"
-
-                    echo "===== Starting new instance ====="
-                    sshCommand remote: remote, command: """
-                        nohup java -jar ${DEPLOY_DIR}/${SERVICE_NAME}.jar \
-                        --server.port=${SERVER_PORT} > ${DEPLOY_DIR}/${LOG_FILE} 2>&1 &
+                    // Create deploy.sh content
+                    writeFile file: 'deploy.sh', text: """
+                        #!/bin/bash
+                        mkdir -p ${DEPLOY_DIR}
+                        pkill -f ${SERVICE_NAME}.jar || true
+                        nohup java -jar ${DEPLOY_DIR}/${SERVICE_NAME}.jar --server.port=${SERVER_PORT} > ${DEPLOY_DIR}/${LOG_FILE} 2>&1 &
+                        echo "Deployment completed"
                     """
-
-                    echo "===== Verifying process is running ====="
-                    sshCommand remote: remote, command: "ps -ef | grep -v grep | grep ${SERVICE_NAME}.jar"
-
-                    echo "===== Showing last 10 log lines ====="
-                    sshCommand remote: remote, command: "tail -n 10 ${DEPLOY_DIR}/${LOG_FILE}"
                 }
+            }
+        }
+
+        stage('Deploy to EC2') {
+            steps {
+                sshPublisher(
+                    publishers: [
+                        sshPublisherDesc(
+                            configName: 'ec2-server', // must match Jenkins SSH configuration
+                            transfers: [
+                                sshTransfer(
+                                    sourceFiles: 'target/${SERVICE_NAME}.jar, deploy.sh',
+                                    removePrefix: '',
+                                    remoteDirectory: DEPLOY_DIR,
+                                    execCommand: "chmod +x ${DEPLOY_DIR}/deploy.sh && ${DEPLOY_DIR}/deploy.sh"
+                                )
+                            ],
+                            usePromotionTimestamp: false,
+                            verbose: true
+                        )
+                    ]
+                )
             }
         }
     }
