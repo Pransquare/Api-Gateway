@@ -34,27 +34,28 @@ pipeline {
 
         // Execute Linux commands via SSH
         bat """
-        ssh -i "${PEM_PATH}" -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "
-            echo ===== Creating deploy directory =====
+        ssh -i "${PEM_PATH}" -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} '
+            echo "===== Creating deploy directory ====="
             mkdir -p ${DEPLOY_DIR}
 
-            echo ===== Killing old process =====
+            echo "===== Killing old process ====="
             fuser -k 8085/tcp || true
             sleep 3
 
-            echo ===== Clearing log =====
+            echo "===== Clearing log ====="
             > ${DEPLOY_DIR}/${SERVICE_NAME}.log
 
-            echo ===== Starting new API-Gateway =====
+            echo "===== Starting new API-Gateway ====="
             nohup java -jar ${DEPLOY_DIR}/${SERVICE_NAME}.jar --server.port=8085 > ${DEPLOY_DIR}/${SERVICE_NAME}.log 2>&1 &
 
-            echo ===== Waiting and checking health =====
+            echo "===== Waiting and checking health ====="
             sleep 10
-            curl -s http://localhost:8085/actuator/health || echo 'API-Gateway may not be up yet'
-        "
+            curl -s http://localhost:8085/actuator/health || echo "API-Gateway may not be up yet"
+        '
         """
     }
 }
+
 
 
 
