@@ -28,24 +28,28 @@ pipeline {
         }
  
         stage('Deploy to EC2') {
-            steps {
-                bat """
-                echo ===== Creating deploy directory on EC2 if not exists =====
-                ssh -i "${PEM_PATH}" -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "mkdir -p ${DEPLOY_DIR}"
- 
-                echo ===== Copying JAR to EC2 =====
-                scp -i "${PEM_PATH}" -o StrictHostKeyChecking=no target\\${SERVICE_NAME}.jar ec2-user@${EC2_HOST}:${DEPLOY_DIR}/
- 
-                echo ===== Stopping old API-Gateway instance if running =====
-               ssh -i "${PEM_PATH}" -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "sudo pkill -9 -f '${SERVICE_NAME}.jar' || true"
- 
-                echo ===== Starting new API-Gateway instance =====
-                ssh -i "${PEM_PATH}" -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "nohup java -jar ${DEPLOY_DIR}/${SERVICE_NAME}.jar --server.port=8085 > ${DEPLOY_DIR}/api-gateway.log 2>&1 &"
- 
-                echo ✅ Deployment completed successfully!
-                """
-            }
-        }
+    steps {
+        bat """
+        echo ===== Creating deploy directory on EC2 if not exists =====
+        ssh -i "${PEM_PATH}" -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "mkdir -p ${DEPLOY_DIR}"
+
+        echo ===== Copying JAR to EC2 =====
+        scp -i "${PEM_PATH}" -o StrictHostKeyChecking=no target\\${SERVICE_NAME}.jar ec2-user@${EC2_HOST}:${DEPLOY_DIR}/
+
+        echo ===== Stopping old API-Gateway instance if running =====
+        ssh -i "${PEM_PATH}" -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "sudo pkill -9 -f '${SERVICE_NAME}.jar' || true"
+
+        echo ===== Starting new API-Gateway instance =====
+        ssh -i "${PEM_PATH}" -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "nohup java -jar ${DEPLOY_DIR}/${SERVICE_NAME}.jar --server.port=8085 > ${DEPLOY_DIR}/api-gateway.log 2>&1 &"
+
+        echo ===== Checking if API-Gateway started successfully =====
+        ssh -i "${PEM_PATH}" -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "sleep 10 && curl -s http://localhost:8085/actuator/health || echo '⚠️ API-Gateway may not be up yet'"
+
+        echo ✅ Deployment completed successfully!
+        """
+    }
+}
+
     }
  
     post {
