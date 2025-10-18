@@ -5,7 +5,7 @@ pipeline {
         DEPLOY_DIR = "/home/ec2-user/api-gateway"
         EC2_HOST = "13.61.24.134"
         SERVICE_NAME = "api-gateway"
-        PEM_PATH = "C:\\ProgramData\\Jenkins\\.ssh\\ec2-key.pem"
+        PEM_PATH = "C:\\Users\\KRISHNA\\Downloads\\ec2-linux-key.pem"
     }
  
     tools {
