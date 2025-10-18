@@ -3,7 +3,7 @@ pipeline {
  
     environment {
         DEPLOY_DIR = "/home/ec2-user/api-gateway"
-        EC2_HOST = "51.21.170.207"
+        EC2_HOST = "16.171.200.210"
         SERVICE_NAME = "api-gateway"
         PEM_PATH = "C:\\Users\\KRISHNA\\Downloads\\ec2-linux-key.pem"
     }
