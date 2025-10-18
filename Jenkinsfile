@@ -29,34 +29,33 @@ pipeline {
  
        stage('Deploy to EC2') {
     steps {
+        // Copy JAR from Windows Jenkins to EC2
+        bat "scp -i \"${PEM_PATH}\" -o StrictHostKeyChecking=no target\\${SERVICE_NAME}.jar ec2-user@${EC2_HOST}:${DEPLOY_DIR}/"
+
+        // Execute Linux commands via SSH
         bat """
-        echo ===== Creating deploy directory on EC2 if not exists =====
-        ssh -i "${PEM_PATH}" -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "mkdir -p ${DEPLOY_DIR}"
-
-        echo ===== Copying JAR to EC2 =====
-        scp -i "${PEM_PATH}" -o StrictHostKeyChecking=no target\\${SERVICE_NAME}.jar ec2-user@${EC2_HOST}:${DEPLOY_DIR}/
-
-        echo ===== Killing any old process using port 8085 =====
         ssh -i "${PEM_PATH}" -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "
-            sudo fuser -k 8085/tcp || true
+            echo ===== Creating deploy directory =====
+            mkdir -p ${DEPLOY_DIR}
+
+            echo ===== Killing old process =====
+            fuser -k 8085/tcp || true
             sleep 3
-        "
 
-        echo ===== Cleaning old log =====
-        ssh -i "${PEM_PATH}" -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "> ${DEPLOY_DIR}/${SERVICE_NAME}.log"
+            echo ===== Clearing log =====
+            > ${DEPLOY_DIR}/${SERVICE_NAME}.log
 
-        echo ===== Starting new API-Gateway instance =====
-        ssh -i "${PEM_PATH}" -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "
+            echo ===== Starting new API-Gateway =====
             nohup java -jar ${DEPLOY_DIR}/${SERVICE_NAME}.jar --server.port=8085 > ${DEPLOY_DIR}/${SERVICE_NAME}.log 2>&1 &
-        "
 
-        echo ===== Waiting and checking if API-Gateway started =====
-        ssh -i "${PEM_PATH}" -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "sleep 10 && curl -s http://localhost:8085/actuator/health || echo 'API-Gateway may not be up yet'"
-        
-        echo ✅ Deployment completed successfully!
+            echo ===== Waiting and checking health =====
+            sleep 10
+            curl -s http://localhost:8085/actuator/health || echo 'API-Gateway may not be up yet'
+        "
         """
     }
 }
+
 
 
     }
