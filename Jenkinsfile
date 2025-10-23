@@ -3,7 +3,7 @@ pipeline {
  
     environment {
         DEPLOY_DIR = "/home/ec2-user/api-gateway"
-        EC2_HOST = "16.170.219.99"
+        EC2_HOST = "16.171.155.143"
         SERVICE_NAME = "api-gateway"
         PEM_PATH = "C:\\Users\\KRISHNA\\Downloads\\ec2-linux-key.pem"
     }
@@ -42,7 +42,7 @@ pipeline {
                 echo ===== Starting new API-Gateway instance =====
                 ssh -i "${PEM_PATH}" -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "nohup java -jar ${DEPLOY_DIR}/${SERVICE_NAME}.jar --server.port=8085 > ${DEPLOY_DIR}/api-gateway.log 2>&1 &"
  
-                echo ✅ Deployment completed successfully!
+                echo  Deployment completed successfully!
                 """
             }
         }
@@ -50,7 +50,7 @@ pipeline {
  
     post {
         failure {
-            echo "❌ Deployment failed. Check Jenkins console logs for details."
+            echo " Deployment failed. Check Jenkins console logs for details."
         }
     }
 }
