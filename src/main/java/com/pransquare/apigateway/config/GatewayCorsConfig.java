@@ -11,7 +11,7 @@ public class GatewayCorsConfig {
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        config.addAllowedOrigin("http://localhost:3004");
+        config.addAllowedOrigin("http://http://ec2-51-21-125-66.eu-north-1.compute.amazonaws.com/");
         config.addAllowedMethod("*");
         config.addAllowedHeader("*");
         config.setAllowCredentials(true);
