@@ -16,10 +16,10 @@ public class GatewayCorsConfig {
         config.addAllowedOrigin("http://ec2-13-48-201-181.eu-north-1.compute.amazonaws.com");
         //config.addAllowedOriginPattern("*");
 
-        // config.addAllowedMethod("*");
-        // config.addAllowedHeader("*");
-        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(Arrays.asList("*"));
+         config.addAllowedMethod("*");
+         config.addAllowedHeader("*");
+        //config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        //config.setAllowedHeaders(Arrays.asList("*"));
         
         config.setAllowCredentials(true);
 
