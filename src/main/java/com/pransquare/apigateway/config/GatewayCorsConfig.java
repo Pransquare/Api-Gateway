@@ -11,11 +11,14 @@ public class GatewayCorsConfig {
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        //config.addAllowedOrigin("http://ec2-51-21-125-66.eu-north-1.compute.amazonaws.com");
-        config.addAllowedOriginPattern("*");
+        config.addAllowedOrigin("http://ec2-13-48-201-181.eu-north-1.compute.amazonaws.com");
+        //config.addAllowedOriginPattern("*");
 
-        config.addAllowedMethod("*");
-        config.addAllowedHeader("*");
+        // config.addAllowedMethod("*");
+        // config.addAllowedHeader("*");
+        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(Arrays.asList("*"));
+        
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
