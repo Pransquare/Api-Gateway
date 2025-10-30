@@ -1,31 +1,31 @@
-// package com.pransquare.apigateway.config;
-// import org.springframework.context.annotation.Bean;
-// import org.springframework.context.annotation.Configuration;
-// import org.springframework.web.cors.CorsConfiguration;
-// import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-// import org.springframework.web.filter.CorsFilter;
+package com.pransquare.apigateway.config;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
 
-// import java.util.Arrays;
+import java.util.Arrays;
 
-// @Configuration
-// public class GatewayCorsConfig {
+@Configuration
+public class GatewayCorsConfig {
 
-//     @Bean
-//     public CorsFilter corsFilter() {
-//         CorsConfiguration config = new CorsConfiguration();
-//         config.addAllowedOrigin("http://ec2-13-48-201-181.eu-north-1.compute.amazonaws.com");
-//         //config.addAllowedOriginPattern("*");
+    @Bean
+    public CorsFilter corsFilter() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.addAllowedOrigin("http://ec2-13-48-201-181.eu-north-1.compute.amazonaws.com");
+        //config.addAllowedOriginPattern("*");
 
-//          config.addAllowedMethod("*");
-//          config.addAllowedHeader("*");
-//         //config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-//         //config.setAllowedHeaders(Arrays.asList("*"));
+         config.addAllowedMethod("*");
+         config.addAllowedHeader("*");
+        //config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        //config.setAllowedHeaders(Arrays.asList("*"));
         
-//         config.setAllowCredentials(true);
+        config.setAllowCredentials(true);
 
-//         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-//         source.registerCorsConfiguration("/**", config);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
 
-//         return new CorsFilter(source);
-//     }
-// }
+        return new CorsFilter(source);
+    }
+}
